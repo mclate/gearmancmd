@@ -72,7 +72,7 @@ def main():
     queue1 = Queue1()
     queue2 = Queue2()
 
-    reader = gearmancmd.GearmanCMD(['localhost:4730'], command='command')
+    reader = gearmancmd.GearmanCMD(['localhost:4730'], command='command', poll_timeout=.1)
     reader.register_task('queue1', queue1)
     reader.register_task('queue2', queue2)
 

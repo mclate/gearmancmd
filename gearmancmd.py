@@ -40,14 +40,17 @@ class GearmanCMD(GearmanWorker):
     _trigger = None
     _pipe_in = None
     _pipe_out = None
+    _poll_timeout = .1
 
-    def __init__(self, servers, command=None):
+    def __init__(self, servers, command=None, **kwargs):
         """ Constructor.
 
         Accept list of servers to connect to and command argument
         that will be searched in passed commands to route requests to.
 
         By default we will look for "command" key in incoming dict.
+
+        Use poll_timout to define delay between poll attempts
 
         """
 
@@ -56,6 +59,7 @@ class GearmanCMD(GearmanWorker):
 
         self._pipe_in, self._pipe_out = Pipe()
         self._trigger = Event()
+        self._poll_timeout = kwargs.get('poll_timeout', .1)
 
     def _create_thread(self):
         """ Initialize worker thread. """
@@ -68,12 +72,13 @@ class GearmanCMD(GearmanWorker):
                 self._servers,
                 self._pipe_in,
                 self._queues.keys(),
-                self._trigger
+                self._trigger,
+                self._poll_timeout,
             )
         )
         self._handle.daemon = False
 
-    def _thread(self, worker_class, servers, pipe, listen_queues, trigger):
+    def _thread(self, worker_class, servers, pipe, queues, trigger, timeout):
         """ Executed in separate thread. Reads commands from gearman. """
         print "starting thread"
 
@@ -85,18 +90,21 @@ class GearmanCMD(GearmanWorker):
             """ Handler receive task from gearman and put it in the queue. """
             print "received", gearman_job.data, gearman_job.task
             pipe.send((gearman_job.task, gearman_job.data,))
-            response = pipe.recv()
+            while not trigger.is_set():
+                if pipe.poll(timeout):
+                    response = pipe.recv()
+                    break
             print "processed", response
             return response
 
         worker = worker_class(servers)
         worker.after_poll = _poll_event_handler
-        for listen in listen_queues:
+        for listen in queues:
             print "register ", listen
             worker.register_task(listen, task_handler)
 
         print "working"
-        worker.work(poll_timeout=1)
+        worker.work(poll_timeout=timeout)
         print "stop working"
 
     def register_task(self, queue, target):
@@ -109,10 +117,9 @@ class GearmanCMD(GearmanWorker):
         self._handle.start()
 
         while self._handle.is_alive() or self._pipe_out.poll():
-            if self._pipe_out.poll():
+            if self._pipe_out.poll(self._poll_timeout):
                 (queue, task) = self._pipe_out.recv()
             else:
-                time.sleep(.01)
                 continue
             print "<< got ", task
 
