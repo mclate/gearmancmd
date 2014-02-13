@@ -80,7 +80,6 @@ class GearmanCMD(GearmanWorker):
 
     def _thread(self, worker_class, servers, pipe, queues, trigger, timeout):
         """ Executed in separate thread. Reads commands from gearman. """
-        print "starting thread"
 
         def _poll_event_handler(activity):
             """ Function to determine if we should stop after this poll. """
@@ -88,24 +87,19 @@ class GearmanCMD(GearmanWorker):
 
         def task_handler(gearman_worker, gearman_job):
             """ Handler receive task from gearman and put it in the queue. """
-            print "received", gearman_job.data, gearman_job.task
             pipe.send((gearman_job.task, gearman_job.data,))
             while not trigger.is_set():
                 if pipe.poll(timeout):
                     response = pipe.recv()
                     break
-            print "processed", response
             return response
 
         worker = worker_class(servers)
         worker.after_poll = _poll_event_handler
         for listen in queues:
-            print "register ", listen
             worker.register_task(listen, task_handler)
 
-        print "working"
         worker.work(poll_timeout=timeout)
-        print "stop working"
 
     def register_task(self, queue, target):
         """ Register queue and target class to process this queue. """
@@ -121,17 +115,13 @@ class GearmanCMD(GearmanWorker):
                 (queue, task) = self._pipe_out.recv()
             else:
                 continue
-            print "<< got ", task
 
             try:
                 response = self._process_task(queue, task)
             except Exception, e:
-                print e
-                response = str(e)
                 raise
 
             if self._pipe_out:
-                print ">> reply", response
                 self._pipe_out.send(response)
 
     def stop(self):
@@ -166,4 +156,4 @@ class GearmanCMDQueue(object):
 
     def default(self, gcmd, task):
         """ Default handler. """
-        print task
+        raise Exception("Default wrapper not implemented for task %s" % task)
