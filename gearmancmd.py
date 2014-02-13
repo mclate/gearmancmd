@@ -33,12 +33,13 @@ class GearmanCMD(GearmanWorker):
 
     worker = JSONGearmanWorker
 
-    _pipe = None
     _queues = {}
     _handle = None
     _command = None
     _servers = None
     _trigger = None
+    _pipe_in = None
+    _pipe_out = None
 
     def __init__(self, servers, command=None):
         """ Constructor.
@@ -53,7 +54,7 @@ class GearmanCMD(GearmanWorker):
         self._command = command if command else "command"
         self._servers = servers
 
-        self._pipe = Pipe()
+        self._pipe_in, self._pipe_out = Pipe()
         self._trigger = Event()
 
     def _create_thread(self):
@@ -65,7 +66,7 @@ class GearmanCMD(GearmanWorker):
             args=(
                 self.worker,
                 self._servers,
-                self._pipe,
+                self._pipe_in,
                 self._queues.keys(),
                 self._trigger
             )
@@ -83,8 +84,8 @@ class GearmanCMD(GearmanWorker):
         def task_handler(gearman_worker, gearman_job):
             """ Handler receive task from gearman and put it in the queue. """
             print "received", gearman_job.data, gearman_job.task
-            pipe[0].send((gearman_job.task, gearman_job.data,))
-            response = pipe[0].recv()
+            pipe.send((gearman_job.task, gearman_job.data,))
+            response = pipe.recv()
             print "processed", response
             return response
 
@@ -107,9 +108,9 @@ class GearmanCMD(GearmanWorker):
         self._create_thread()
         self._handle.start()
 
-        while self._handle.is_alive() or self._pipe[1].poll():
-            if self._pipe[1].poll():
-                (queue, task) = self._pipe[1].recv()
+        while self._handle.is_alive() or self._pipe_out.poll():
+            if self._pipe_out.poll():
+                (queue, task) = self._pipe_out.recv()
             else:
                 time.sleep(.01)
                 continue
@@ -120,16 +121,17 @@ class GearmanCMD(GearmanWorker):
             except Exception, e:
                 print e
                 response = str(e)
-                pass
+                raise
 
-
-            self._pipe[1].send(response)
+            if self._pipe_out:
+                print ">> reply", response
+                self._pipe_out.send(response)
 
     def stop(self):
         """ Stop worker, terminate thread and finish processing tasks. """
         self._trigger.set()
-        self._pipe[0].close()
-        self._pipe[1].close()
+        self._pipe_in.close()
+        self._pipe_out.close()
         self._handle.join()
 
     def _process_task(self, queue, task):
