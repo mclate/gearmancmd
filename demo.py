@@ -17,10 +17,11 @@ DATA = {
         {'command': 'cmd2', 'data': 'data0-queue1-cmd2'},
         {'command': 'cmd3', 'data': 'data1-queue1-cmd3'},
         {'command': 'cmd1', 'data': 'data2-queue1-cmd1'},
+        {'data': 'data1-queue1-no-cmd'},
     ],
     'queue2': [
         {'command': 'cmd1', 'data': 'data1-queue2-cmd1'},
-        {'command': 'cmd4', 'data': 'data2-queue2-cmd4'},
+        {'command': 'cmd3', 'data': 'data2-queue2-cmd4'},
         {'command': 'cmd1', 'data': 'data3-queue2-cmd1'},
         {'data': 'data1-queue2-no-cmd'},
         {'command': 'cmd1', 'data': 'data4-queue2-cmd1'},
@@ -40,8 +41,6 @@ class Queue1(gearmancmd.GearmanCMDQueue):
     def cmd2(self, gcmd, task):
         return "q1c2 "+ str(task)
 
-    def default(ser, gcmd, task):
-        return "q1def " + str(task)
 
 class Queue2(gearmancmd.GearmanCMDQueue):
     """ Queue2. """
@@ -72,13 +71,16 @@ def main():
     queue1 = Queue1()
     queue2 = Queue2()
 
-    reader = gearmancmd.GearmanCMD(['localhost:4730'], command='command', poll_timeout=.1)
+    reader = gearmancmd.GearmanCMD(['localhost:4730'], command='command')
     reader.register_task('queue1', queue1)
     reader.register_task('queue2', queue2)
 
     try:
         reader.run()
     except KeyboardInterrupt:
+        reader.stop()
+    except Exception, e:
+        print str(e)
         reader.stop()
 
 if __name__ == '__main__':
