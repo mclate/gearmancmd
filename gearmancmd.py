@@ -141,9 +141,13 @@ class GearmanCMD(GearmanWorker):
 
         command = task.get(self._command, 'default')
 
+        method = None
         try:
             method = getattr(self._queues[queue], command)
         except AttributeError:
+            method = getattr(self._queues[queue], 'default')
+
+        if not method:
             raise Exception("No method available for %s command" % command)
 
         return method(self, task)

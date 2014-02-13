@@ -40,13 +40,21 @@ class Queue1(gearmancmd.GearmanCMDQueue):
     def cmd2(self, gcmd, task):
         return "q1c2 "+ str(task)
 
+    def default(ser, gcmd, task):
+        return "q1def " + str(task)
+
 class Queue2(gearmancmd.GearmanCMDQueue):
     """ Queue2. """
     def cmd1(self, gcmd, task):
         return "q2c1 "+ str(task)
 
-    def cmd2(self, gcmd, task):
+    def cmd4(self, gcmd, task):
+        print "STOP"
+        gcmd.stop()
         return "q2c2 "+ str(task)
+
+    def default(ser, gcmd, task):
+        return "q2def " + str(task)
 
 def populate_queue():
     """ Push some messages into queues. """
