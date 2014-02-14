@@ -156,10 +156,18 @@ class GearmanCMD(GearmanWorker):
         try:
             method = getattr(self._queues[queue], command)
         except AttributeError:
-            method = getattr(self._queues[queue], 'default')
+            try:
+                method = getattr(self._queues[queue], 'default')
+            except AttributeError:
+                method = None
 
         if not method:
-            raise Exception("No method available for %s command" % command)
+            raise NotImplementedError(
+                "No method available for {queue}:{command} command".format(
+                    queue=queue,
+                    command=command,
+                )
+            )
 
         return method(self, task)
 
@@ -169,4 +177,6 @@ class GearmanCMDQueue(object):
 
     def default(self, gcmd, task):
         """ Default handler. """
-        raise Exception("Default wrapper not implemented for task %s" % task)
+        raise NotImplementedError(
+            "Default wrapper not implemented for task %s" % task
+        )
