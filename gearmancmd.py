@@ -139,7 +139,11 @@ class GearmanCMD(GearmanWorker):
         Task will be ignored if None is returned
 
         """
-        return task.get(self._command, 'default')
+        try:
+            dispatcher = getattr(self._queues[queue], 'dispatch')
+            return dispatcher(task)
+        except AttributeError:
+            return task.get(self._command, 'default')
 
     def _process_task(self, queue, task):
         """ Pocess task and dispatch it for underlaying classes. """
