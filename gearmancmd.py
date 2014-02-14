@@ -2,7 +2,6 @@
 """ Command-based gearman module. """
 
 import json
-import time
 
 from threading import Event, Thread
 from multiprocessing.dummy import Pipe
@@ -65,7 +64,7 @@ class GearmanCMD(GearmanWorker):
         self._trigger = Event()
 
         self._handle = Thread(
-            target = self._thread,
+            target=self._thread,
             args=(
                 self.worker,
                 self._servers,
@@ -87,11 +86,11 @@ class GearmanCMD(GearmanWorker):
         def task_handler(gearman_worker, gearman_job):
             """ Handler receive task from gearman and put it in the queue. """
             pipe.send((gearman_job.task, gearman_job.data,))
-            while not trigger.is_set():
-                if pipe.poll(timeout):
-                    response = pipe.recv()
-                    break
-            return response
+
+            while not trigger.is_set() and not pipe.poll(timeout):
+                continue
+
+            return pipe.recv()
 
         worker = worker_class(servers)
         worker.after_poll = _poll_event_handler
