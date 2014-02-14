@@ -145,9 +145,6 @@ class GearmanCMD(GearmanWorker):
 
     def _process_task(self, queue, task):
         """ Pocess task and dispatch it for underlaying classes. """
-        if queue not in self._queues:
-            raise Exception("Unable to process queue %s" % queue)
-
         command = self.dispatch(queue, task)
         if not command:
             return None
