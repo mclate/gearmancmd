@@ -35,24 +35,31 @@ DATA = {
 class Queue1(gearmancmd.GearmanCMDQueue):
     """ Queue1. """
     def cmd1(self, gcmd, task):
+        print 'q1c1'
         return "q1c1 "+ str(task)
 
-
     def cmd2(self, gcmd, task):
+        print 'q1c2'
         return "q1c2 "+ str(task)
 
+    def default(self, gcmd, task):
+        print 'q1def'
+        return "def"
 
 class Queue2(gearmancmd.GearmanCMDQueue):
     """ Queue2. """
     def cmd1(self, gcmd, task):
+        print 'q2c1'
         return "q2c1 "+ str(task)
 
     def cmd4(self, gcmd, task):
+        print 'q2c4'
         print "STOP"
         gcmd.stop()
         return "q2c2 "+ str(task)
 
     def default(ser, gcmd, task):
+        print 'q2def'
         return "q2def " + str(task)
 
 def populate_queue():
@@ -64,6 +71,14 @@ def populate_queue():
             print " >> submitting", msg, queue
             client.submit_job(queue, json.dumps(msg), background=True)
 
+class GCMD(gearmancmd.GearmanCMD):
+    def dispatch(self, queue, task):
+        if task.get('command') == 'cmd1':
+            return None
+        else:
+            return task.get('command')
+
+
 def main():
     """ Demo entrypoint. """
     populate_queue()
@@ -71,7 +86,7 @@ def main():
     queue1 = Queue1()
     queue2 = Queue2()
 
-    reader = gearmancmd.GearmanCMD(['localhost:4730'], command='command')
+    reader = GCMD(['localhost:4730'], command='command')
     reader.register_task('queue1', queue1)
     reader.register_task('queue2', queue2)
 
@@ -80,7 +95,7 @@ def main():
     except KeyboardInterrupt:
         reader.stop()
     except Exception, e:
-        print str(e)
+        print e
         reader.stop()
 
 if __name__ == '__main__':

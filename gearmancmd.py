@@ -131,12 +131,26 @@ class GearmanCMD(GearmanWorker):
         self._pipe_out.close()
         self._handle.join()
 
+    def dispatch(self, queue, task):
+        """ Method to define routine to be executed by particular task in queue
+
+        This method could be overriden by user
+        to implement complex user-defined logic.
+
+        Return method name (string) or None.
+        Task will be ignored if None is returned
+
+        """
+        return task.get(self._command, 'default')
+
     def _process_task(self, queue, task):
         """ Pocess task and dispatch it for underlaying classes. """
         if queue not in self._queues:
             raise Exception("Unable to process queue %s" % queue)
 
-        command = task.get(self._command, 'default')
+        command = self.dispatch(queue, task)
+        if not command:
+            return None
 
         method = None
         try:
@@ -148,7 +162,6 @@ class GearmanCMD(GearmanWorker):
             raise Exception("No method available for %s command" % command)
 
         return method(self, task)
-
 
 
 class GearmanCMDQueue(object):
