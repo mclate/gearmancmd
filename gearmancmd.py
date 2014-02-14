@@ -57,13 +57,12 @@ class GearmanCMD(GearmanWorker):
         self._command = command if command else "command"
         self._servers = servers
 
-        self._pipe_in, self._pipe_out = Pipe()
-        self._trigger = Event()
         self._poll_timeout = kwargs.get('poll_timeout', .1)
 
     def _create_thread(self):
         """ Initialize worker thread. """
-        self._trigger.clear()
+        self._pipe_in, self._pipe_out = Pipe()
+        self._trigger = Event()
 
         self._handle = Thread(
             target = self._thread,
