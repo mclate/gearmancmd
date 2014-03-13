@@ -40,7 +40,7 @@ class Queue(gearmancmd.GearmanCMDQueue):
         """ Default task will be executed if no routine found for command. """
         return None
 
-    def stop(self, gcmd, gearman_job):
+    def stop(self, gcmd, task):
         """ It is possible to control gearmancmd from within the command. """
         print "Stopping gcmd..."
         gcmd.stop()
@@ -53,10 +53,10 @@ def main():
     # Create GearmanCMD object. See further for more options
     reader = gearmancmd.GearmanCMD(['localhost:4730'])
 
-    # Register our queues
+    # Register queues
     reader.register_task('queue', Queue())
 
-    # Start worker in separate thread
+    # Start worker
     try:
         reader.run()
     except KeyboardInterrupt:  # Worker can be stopped by Ctrl+C
@@ -75,9 +75,9 @@ GearmanCMD class
 
 Next options available for GearmanCMD constructor:
 
-* servers (required) - list of gearman servers to connect to (will be passed directly to underlying worker, see below)
-* command (default: "command") - command argument to be used by dispatcher when determining routine to call from queue
-* poll_timeout (default: 0.1) - poll interval for gearman worker and underlying pipe polls
+* `servers` (required) - list of gearman servers to connect to (will be passed directly to underlying worker, see below)
+* `command` (default: "command") - command argument to be used by dispatcher when determining routine to call from queue
+* `poll_timeout` (default: 0.1) - poll interval for gearman worker and underlying pipe polls
 
 In order to use different worker (by default GearmanCMD is shipped with JSON aware encoder) one should inherit GearmanCMD class and override `worker` attribute:
 
@@ -97,8 +97,8 @@ Tasks dispatching
 By gefault GearmanCMD will use `command` value from JSON task and try to call routine with same name from queue class (therefore commands can contain only values that are proper for function names in python).
 This can be overriden in next ways:
 
-1. `command` attribute to `init` method - defines what key to use (default: "command")
-2. `dispatch` method in queue - see example below
+1. `command` attribute in `init` method - defines what key to use (default: "command")
+2. `dispatch` method in queue class - see example below
 3. `dispatch` method in GearmanCMD child class - can be used if you need to dispatch tasks between different queues by some custom logic.
 
 Custom tasks dispatching within a queue:
@@ -107,9 +107,7 @@ Custom tasks dispatching within a queue:
 
 class Queue(gearmancmd.GearmanCMDQueue):
 
-    """
-    Override dispatch method to implement custom dispatching logic
-    """
+    """ Override dispatch method to implement custom dispatching logic. """
 
     def dispatch(self, task):
         """
@@ -126,20 +124,9 @@ class Queue(gearmancmd.GearmanCMDQueue):
         return command.upper()
 
     def REVERSE(self, gcmd, task):
-        """
-        Every command is a simple routine within class.
-
-        Returned data will be sent back to the client
-
-        Input sent by client: {"command": "reverse", "message": "Hello"}
-        Task variable value: {u'command': u'reverse', u'message': u'Hello'}
-        Reply client should receive: "olleH"
-
-        """
-        message = task.get("message", None)
-        if message is None:
-            raise AttributeError("Missing 'message' key")
-        return message[::-1]
+        """ Reverse routine from first example... """
+        return "olleH"  # Dirty hack :)
+        
 
     def DEFAULT(self, gcmd, task):
         """ Default task will be executed if no routine found for command. """
@@ -149,15 +136,13 @@ class Queue(gearmancmd.GearmanCMDQueue):
         """ It is possible to control gearmancmd from within the command. """
         print "Stopping gcmd..."
         gcmd.stop()
-
-        # Returned value will be ignored, None will be sent to client
-        return
 ```
 
 Notes
 -----
 
-1. You must restart GearmanCMD if you add qeues while it's running:
+1. Internally we use `Pipes` to send data between threads. All commands from all queues are passed by one Pipe. This should not be an issue, but just be informed.
+2. You must restart GearmanCMD if you add qeues while it's running:
 
 ```python
 
@@ -172,5 +157,3 @@ reader.register_task('another_queue', Queue2())
 reader.stop()
 reader.run()
 ```
-
-2. Internally we use `Pipes` to send data between threads. All commands from all queues are passed by one Pipe. This should not be an issue, but just be informed.
