@@ -27,8 +27,8 @@ class Queue(gearmancmd.GearmanCMDQueue):
         Returned data will be sent back to the client
 
         Input sent by client: {"command": "reverse", "message": "Hello"}
-        Task variable value: {u'command': u'reverse', u'message': u'Hello'}
-        Reply client should receive: "olleH"
+        task variable value: {u'command': u'reverse', u'message': u'Hello'}
+        In reply client should receive: "olleH"
 
         """
         message = task.get("message", None)
