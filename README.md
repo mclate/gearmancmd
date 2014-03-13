@@ -51,18 +51,18 @@ class Queue(gearmancmd.GearmanCMDQueue):
 def main():
 
     # Create GearmanCMD object. See further for more options
-    reader = gearmancmd.GearmanCMD(['localhost:4730'])
+    worker = gearmancmd.GearmanCMD(['localhost:4730'])
 
     # Register queues
-    reader.register_task('queue', Queue())
+    worker.register_task('queue', Queue())
 
     # Start worker
     try:
-        reader.run()
+        worker.run()
     except KeyboardInterrupt:  # Worker can be stopped by Ctrl+C
-        reader.stop()
+        worker.stop()
     except Exception, e:       # Here we can handle exceptions from queues
-        reader.stop()
+        worker.stop()
 
 
 if __name__ == '__main__':
@@ -146,14 +146,14 @@ Notes
 
 ```python
 
-reader = gearmancmd.GearmanCMD(['localhost:4730'])
-reader.register_task('queue', Queue())
-reader.run()
+worker = gearmancmd.GearmanCMD(['localhost:4730'])
+worker.register_task('queue', Queue())
+worker.run()
 
 # This queue will not be used ....
-reader.register_task('another_queue', Queue2())
+worker.register_task('another_queue', Queue2())
 
 # ... until you do
-reader.stop()
-reader.run()
+worker.stop()
+worker.run()
 ```
