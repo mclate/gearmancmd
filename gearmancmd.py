@@ -78,7 +78,7 @@ class GearmanCMD(GearmanWorker):
 
         self._poll_timeout = kwargs.get('poll_timeout', .1)
 
-    def _create_thread(self):
+    def _create_thread(self, stop_trigger):
         """ Initialize worker thread and communication Pipe. """
         self._pipe_in, self._pipe_out = Pipe()
         self._trigger = Event()
@@ -92,11 +92,12 @@ class GearmanCMD(GearmanWorker):
                 self._queues.keys(),
                 self._trigger,
                 self._poll_timeout,
+                stop_trigger,
             )
         )
         self._handle.daemon = False
 
-    def _thread(self, worker_class, servers, pipe, queues, trigger, timeout):
+    def _thread(self, worker_class, servers, pipe, queues, trigger, timeout, extra_stop):
         """ Executed in separate thread.
 
         Read commands from gearman and send them to Pipe for processing.
@@ -106,7 +107,10 @@ class GearmanCMD(GearmanWorker):
 
         def _poll_event_handler(activity):
             """ Function to determine if we should stop after this poll. """
-            return not trigger.is_set()
+            res = not trigger.is_set()
+            if extra_stop is not None:
+                res = res and extra_stop.is_set()
+            return res
 
         def task_handler(gearman_worker, gearman_job):
             """ Handle received task and put it in the queue. """
@@ -136,9 +140,9 @@ class GearmanCMD(GearmanWorker):
         """
         self._queues.update({queue: target})
 
-    def run(self):
+    def run(self, stop_trigger=None):
         """ Start worker thread; pass received tasks for processing. """
-        self._create_thread()
+        self._create_thread(stop_trigger)
         self._handle.start()
 
         while self._handle.is_alive() or self._pipe_out.poll():

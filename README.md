@@ -91,6 +91,25 @@ class CustomGCMD(GearmanCMD):
     worker = CustomWorker
 ```
 
+
+External stop trigger
+---------------------
+
+GearmanCMD can also be stopped with external stop trigger. Normally one want to send instance of Event (from threading or multiprocessing module) to `run` routine. GearmanCMD will call `is_set` method to check if stop trigger is triggered.
+
+```python
+import threading
+
+trigger = threading.Event()
+
+# now start GearmanCMD with additional argument
+worker.run(trigger)
+
+# now, to stop worker from external thread, just call
+trigger.set()
+```
+
+
 Tasks dispatching
 -----------------
 
