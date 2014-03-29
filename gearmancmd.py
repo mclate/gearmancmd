@@ -115,7 +115,10 @@ class GearmanCMD(GearmanWorker):
             while not trigger.is_set() and not pipe.poll(timeout):
                 continue
 
-            return pipe.recv()
+            if trigger.is_set():
+                return None
+            else:
+                return pipe.recv()
 
         worker = worker_class(servers)
         worker.after_poll = _poll_event_handler
