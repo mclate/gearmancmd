@@ -56,6 +56,7 @@ class GearmanCMD(GearmanWorker):
     _trigger = None
     _pipe_in = None
     _pipe_out = None
+    _exc_handler = None
     _poll_timeout = .1
 
     def __init__(self, servers, command=None, **kwargs):
@@ -71,12 +72,21 @@ class GearmanCMD(GearmanWorker):
         Use poll_timout to define poll interval which will
         be used by gearman worker as well as by internal Pipe
 
+        Use exception_handler to pass routine that will be called when
+        exception is raised by called method.
+        One Exception argument is passed to that function.
+        If None (default) is given, generated exception will be raised
+        and thread will most likely be terminated, leaving you with
+        extra zombie process.
+        Returned value from this routine wil be sent back to the client.
+
         """
 
         self._command = command if command else "command"
         self._servers = servers
 
         self._poll_timeout = kwargs.get('poll_timeout', .1)
+        self._exc_handler = kwargs.get('exception_handler', None)
 
     def _create_thread(self, stop_trigger):
         """ Initialize worker thread and communication Pipe. """
@@ -153,8 +163,11 @@ class GearmanCMD(GearmanWorker):
 
             try:
                 response = self._process_task(queue, task)
-            except Exception:
-                raise
+            except Exception, exc:
+                if self._exc_handler:
+                    response = self._exc_handler(exc)
+                else:
+                    raise
 
             # At this point pipe can be closed by `stop` method
             if self._pipe_out:
